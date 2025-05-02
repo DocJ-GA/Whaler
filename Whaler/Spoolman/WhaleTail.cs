@@ -25,6 +25,8 @@ namespace Whaler.Spoolman
         public string[] FilamentSpoolWeight { get; set; } = ["1000"];
         public string[] FilamentCost { get; set; } = ["18"];
         public string[] DefaultFilamentColour { get; set; } = ["#000000"];
+        public string[] CompatiblePrinters { get; set; } = ["JKSN - 0.25 - Flashforge AD5M", "JKSN - 0.4 - Flashforge AD5M", "JKSN - 0.6 - Flashforge AD5M"];
+
         public string[] NozzleTemperature
         {
             get => [_nozzleTemp.ToString()];

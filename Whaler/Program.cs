@@ -8,30 +8,82 @@ namespace Whaler
 {
     internal class Program
     {
+        protected static IList<WhaleTail> whaleTails = new List<WhaleTail>();
+        protected static IList<Spool> spools = new List<Spool>();
+
         static void Main(string[] args)
         {
             var parsedArgs = Parser.Default.ParseArguments<Settings>(args);
             var settings = parsedArgs.Value;
-            Console.WriteLine(settings.SnakeCaseLower + " " + settings.SnakeCaseUpper);
             settings.WriteVerbose("Verbose mode active.");
-            settings.WriteLine("Grabbing spools from OrcaSlicer.", "Grabbing spools from OrcaSlicer." + Environment.NewLine +
-                " Path: '" + settings.OrcaPath + "'.");
-            var whaleTails = GetTails(settings);
-            settings.WriteLine("Whale Tails retrieved.", "Whale Tails retrieved." + Environment.NewLine +
-                " Number: " + whaleTails.Count + ".");
 
-            settings.WriteLine("Grabbing spools from SpoolMan.", "Grabbing spools from SpoolMan." + Environment.NewLine +
-                " Url: '" + settings.SpoolApi + "spools'.");
-            var spools = GetSpools(settings);
-            settings.WriteLine("Spools retrieved.", "Spools retrieved." + Environment.NewLine +
-                "  Number: " + whaleTails.Count + ".");
+            if (!String.IsNullOrWhiteSpace(settings.OrcaPath))
+                whaleTails = GetTails(settings);
+
+            if (!String.IsNullOrWhiteSpace(settings.SpoolApi))
+                spools = GetSpools(settings);
+
+            if (spools.Count == 0 && whaleTails.Count == 0)
+            {
+                settings.WriteLine("No tails or spools found.",
+                    "Exiting.");
+                settings.WaitForEnter();
+                Environment.Exit(0);
+            }
+
+            if (settings.Archive)
+                ArchiveEmptySpools(settings);
+
+            if (!settings.Sync && !settings.Archive)
+            {
+                settings.WriteLine("No action specified.",
+                    "Use --sync to sync spools and orca filaments, or --archive to archive empty spools.",
+                    "Exiting.");
+                settings.WaitForEnter();
+                Environment.Exit(1);
+            }
+
+            if (settings.Sync)
+                SyncSpools(settings);
+
+        }
+
+        /// <summary>
+        ///  Syncs spools between spoolman and orca slicer.
+        /// </summary>
+        /// <param name="settings">The settings object.</param>
+        public static void SyncSpools(Settings settings)
+        {
+            if (settings.OrcaPath == null)
+            {
+                settings.WriteLine("No OrcaSlicer path specified.",
+                    "Use --orca-path to specify the path to the OrcaSlicer filament files.",
+                    "Exiting.");
+                settings.WaitForEnter();
+                Environment.Exit(1);
+            }
+
+            if (settings.SpoolApi == null)
+            {
+                settings.WriteLine("No SpoolMan API path specified.",
+                    "Use --spoolman-api to specify the path to the SpoolMan API.",
+                    "Exiting.");
+                settings.WaitForEnter();
+                Environment.Exit(1);
+            }
+
+            if (spools.Count == 0)
+            {
+                settings.WriteLine("No spools found. Continuing will remove all filaments currently in orca slicer.");
+                settings.CheckQuit();
+            }
 
             settings.WriteLine("Comparing spools and whales.");
             foreach (var spool in spools)
             {
-                settings.WriteVerbose("Checking for spool's whaletail." + Environment.NewLine +
-                    "  Id: " + spool.Id + "." + Environment.NewLine +
-                    "  Name: " + spool.Filament.Name);
+                settings.WriteVerbose("Checking for spool's whale tail.",
+                    "Id: " + spool.Id + ".",
+                    "Name: " + spool.Filament.Name);
                 var match = whaleTails.FirstOrDefault(whaleTail => whaleTail.FilamentSettingsId.Length >= 1 && whaleTail.FilamentSettingsId[0] == spool.Id.ToString());
                 spool.IsWhale = match != null;
                 if (match != null)
@@ -39,14 +91,14 @@ namespace Whaler
             }
 
             settings.WriteLine("Removing dead whale tails.",
-                "Removing dead whale tails." + Environment.NewLine +
-                "  Hit List Count: " + whaleTails.Count(w => !w.Active));
+                "Removing dead whale tails.",
+                "Hit List Count: " + whaleTails.Count(w => !w.Active));
             var killed = 0;
             foreach (var whaleTail in whaleTails.Where(w => !w.Active))
             {
-                settings.WriteVerbose("Removing whale tail." + Environment.NewLine +
-                    "  Name: " + whaleTail.Name + "." + Environment.NewLine +
-                    "  Id: " + whaleTail.FilamentSettingsId[0] + ".");
+                settings.WriteVerbose("Removing whale tail.",
+                    "Name: " + whaleTail.Name + ".",
+                    "Id: " + whaleTail.FilamentSettingsId[0] + ".");
                 try
                 {
                     File.Delete(whaleTail.CurrentFilePath!);
@@ -54,9 +106,8 @@ namespace Whaler
                 catch (Exception ex)
                 {
                     settings.WriteLine("There was an error deleting the whale tail file.",
-                        "There was an error deleting the whale tail file." + Environment.NewLine +
-                        "  File Path: '" + whaleTail.CurrentFilePath + "'." + Environment.NewLine +
-                        "  Error Message: '" + ex.Message + "'.");
+                        "File Path: '" + whaleTail.CurrentFilePath + "'.",
+                        "Error Message: '" + ex.Message + "'.");
                 }
 
                 try
@@ -66,22 +117,20 @@ namespace Whaler
                 catch (Exception ex)
                 {
                     settings.WriteLine("There was an error deleting the whale tail file.",
-                        "There was an error deleting the whale tail file." + Environment.NewLine +
-                        "  File Path: '" + whaleTail.GetInfoPath() + "'." + Environment.NewLine +
-                        "  Error Message: '" + ex.Message + "'.");
+                        "File Path: '" + whaleTail.GetInfoPath() + "'.",
+                        "Error Message: '" + ex.Message + "'.");
                 }
                 killed++;
             }
             settings.WriteLine("Whale tails killed.",
-                "Whale tails killed." + Environment.NewLine +
-                "  Kill count: " + killed + ".");
+                "Kill count: " + killed + ".");
 
             Console.WriteLine("Addig new whale tails.");
             foreach (var spool in spools.Where(s => !s.IsWhale))
             {
-                settings.WriteVerbose("Adding spool's whaletail." + Environment.NewLine +
-                    "  Id: " + spool.Id + "." + Environment.NewLine +
-                    "  Name: " + spool.Filament.Name);
+                settings.WriteVerbose("Adding spool's whaletail.",
+                    "Id: " + spool.Id + ".",
+                    "Name: " + spool.Filament.Name);
                 settings.WriteVerbose("Creating whale tail.");
                 var whaleTail = spool.ToWhaleTail();
                 File.WriteAllText(Path.Combine(settings.OrcaPath, whaleTail.GetJsonFileName()), JsonSerializer.Serialize(whaleTail, settings.SerializerOptions));
@@ -91,8 +140,17 @@ namespace Whaler
             }
         }
 
+        /// <summary>
+        /// Gets the <see cref="Spool"/>s fromt he specified SpoolMan API.
+        /// </summary>
+        /// <param name="settings">The settings object.</param>
+        /// <returns>A list of <see cref="Spool"/>s.</returns>
         public static IList<Spool> GetSpools(Settings settings)
         {
+            settings.WriteLine("Grabbing spools from SpoolMan.",
+                "Url: '" + settings.SpoolApi + "spools'.");
+
+
             IList<Spool>? spools = Array.Empty<Spool>();
             var client = new HttpClient();
             try
@@ -102,11 +160,38 @@ namespace Whaler
             catch (Exception ex)
             {
                 settings.WriteLine("There was an error getting the spools from the SpoolMan API.",
-                    "There was an error getting the spools from the SpoolMan API." + Environment.NewLine +
-                    "  Error Message: '" + ex.Message + "'.");
+                    "Error Message: '" + ex.Message + "'.");
+                settings.WaitForEnter();
                 Environment.Exit(3);
             }
+            settings.WriteLine("Spools retrieved.",
+                "Number: " + whaleTails.Count + ".");
             return spools ?? Array.Empty<Spool>();
+        }
+
+        /// <summary>
+        /// Archives the empty spools in the SpoolMan API.
+        /// </summary>
+        /// <param name="settings">The settings.</param>
+        public static void ArchiveEmptySpools(Settings settings)
+        {
+            var client = new HttpClient();
+            spools ??= Array.Empty<Spool>();
+            foreach (var spool in spools.Where(s => s.RemainingWeight == 0))
+            {
+                spool.Archived = true;
+                var response = client.PatchAsJsonAsync(settings.SpoolApi + "spool/" + spool.Id, new { archived = true }, settings.SerializerOptions).Result;
+                if (response.IsSuccessStatusCode)
+                    settings.WriteLine("Spool archived.",
+                        "Id: " + spool.Id + ".",
+                        "Name: " + spool.Filament.Name);
+                else
+                    settings.WriteLine("There was an error archiving the spool.",
+                        "Id: " + spool.Id + ".",
+                        "Name: " + spool.Filament.Name,
+                        "Error Type: '" + response.ReasonPhrase + "'.",
+                        "Error Message: '" + response.Content.ReadAsStringAsync().Result);
+            }
         }
 
         /// <summary>
@@ -117,6 +202,9 @@ namespace Whaler
         /// <returns>An <see cref="IList{WhaleTail}"/> object.</returns>
         public static IList<WhaleTail> GetTails(Settings settings)
         {
+            settings.WriteLine("Grabbing spools from OrcaSlicer.",
+                "Path: '" + settings.OrcaPath + "'.");
+
             string[] whales = Array.Empty<string>();
             try
             {
@@ -125,9 +213,8 @@ namespace Whaler
             catch (DirectoryNotFoundException ex)
             {
                 settings.WriteLine("Directory for OrcaSlicer filaments was not found.",
-                    "Directory for OrcaSlicer filaments was not found." + Environment.NewLine +
-                    "  Directory: '" + settings.OrcaPath + "'." + Environment.NewLine +
-                    "  Error Message: '" + ex.Message + '.');
+                    "Directory: '" + settings.OrcaPath + "'.",
+                    "Error Message: '" + ex.Message + '.');
                 settings.WaitForEnter();
                 Environment.Exit(2);
             }
@@ -195,6 +282,9 @@ namespace Whaler
                 if (tail != null)
                     whaleTails.Add(tail.SetCurrentPath(tailPath));
             }
+            settings.WriteLine("Whale Tails retrieved.",
+                "Number: " + whaleTails.Count + ".");
+
             return whaleTails;
         }
     }

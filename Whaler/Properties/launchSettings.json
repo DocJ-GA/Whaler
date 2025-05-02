@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Whaler": {
+      "commandName": "Project",
+      "commandLineArgs": "-Sao \"C:\\Users\\andy\\AppData\\Roaming\\OrcaSlicer\\user\\default\\filament\" -s \"http://spoolman.home/api/v1/\""
+    }
+  }
+}

@@ -50,6 +50,8 @@ namespace Whaler.Spoolman
                 case "petg cf":
                 case "petg cf10":
                     return FilamentType.PETG_CF10;
+                case "tpu":
+                    return FilamentType.TPU;
                 default:
                     return FilamentType.PLA;
             }

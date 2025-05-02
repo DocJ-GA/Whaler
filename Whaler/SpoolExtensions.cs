@@ -17,7 +17,7 @@ namespace Whaler
             {
                 FilamentCost = [spool.Price.ToString() ?? "18"],
                 FilamentSettingsId = [spool.Id.ToString()],
-                FilamentVendor = [spool.Filament.Vendor?.Name ?? "Genderic"],
+                FilamentVendor = [spool.Filament.Vendor?.Name ?? "Generic"],
                 Name = name,
                 FilamentType = [spool.Filament.FilamentType.GetTypeName()],
                 FilamentDensity = [spool.Filament.Density.ToString()],
@@ -27,7 +27,7 @@ namespace Whaler
                 Inherits = spool.Filament.FilamentType.GetInheritName(),
                 NozzleTemperature = [spool.Filament.SettingsExtruderTemp?.ToString() ?? "210"]
             };
-            whale.FilamentStartGcode[0] += spool.Id.ToString();
+            whale.FilamentStartGcode[0] += spool.Id.ToString() + Environment.NewLine + "FILAMENT_OFFSET FILAMENT_TYPE=\"" + spool.Filament.FilamentType.GetTypeName() + "\"";
             whale.FilamentFlowRatio = [spool.Filament.Extra.FlowRatio ?? "0.98"];
 
 
