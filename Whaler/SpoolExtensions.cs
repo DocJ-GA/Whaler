@@ -12,7 +12,7 @@ namespace Whaler
     {
         public static WhaleTail ToWhaleTail(this Spool spool)
         {
-            var name = string.Format("#{0:D4} - {1} - {2}", spool.Id, spool.Filament.Name, spool.Filament.Vendor?.Name ?? "Generic");
+            var name = string.Format("#{0:D4} - {1} - {2} - {3}", spool.Id, spool.Filament.FilamentType.GetTypeName(), spool.Filament.Name, spool.Filament.Vendor?.Name ?? "Generic");
             var whale = new WhaleTail()
             {
                 FilamentCost = [spool.Price.ToString() ?? "18"],
@@ -30,6 +30,7 @@ namespace Whaler
             whale.FilamentStartGcode[0] += spool.Id.ToString() + Environment.NewLine + "FILAMENT_OFFSET FILAMENT_TYPE=\"" + spool.Filament.FilamentType.GetTypeName() + "\"";
             whale.FilamentFlowRatio = [spool.Filament.Extra.FlowRatio ?? "0.98"];
 
+            whale.FilamentCost = [((1000 / spool.Filament.Weight ?? 1000) * spool.Price ?? 14f).ToString()];
 
             if (spool.Filament.ColorHexes.Count > 0)
                 whale.DefaultFilamentColour = spool.Filament.ColorHexes.Select(c => "#" + c).ToArray();
